@@ -1,58 +1,86 @@
-const express = require('express');
-const { exec } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const express = require("express");
+const ytdl = require("ytdl-core");
 
 const app = express();
-const PORT = 3000;
 
-app.get('/', (req, res) => {
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req,res)=>{
     res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>YT Downloader</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-        </head>
-        <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-            <h2>YouTube Video Downloader 🚀</h2>
-            <form action="/download" method="GET">
-                <input type="text" name="url" placeholder="Paste YouTube Link Here" style="width: 80%; padding: 10px;" required>
-                <br><br>
-                <button type="submit" style="padding: 10px 20px; font-size: 16px;">Download Video</button>
-            </form>
-        </body>
-        </html>
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>YT Downloader</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+
+    <body style="text-align:center;font-family:Arial;padding-top:50px">
+
+    <h1>YouTube Video Downloader 🚀</h1>
+
+    <form action="/download">
+    <input 
+    name="url"
+    placeholder="Paste YouTube Link"
+    style="width:80%;padding:12px"
+    required>
+
+    <br><br>
+
+    <button style="padding:12px 25px">
+    Download MP4
+    </button>
+
+    </form>
+
+    </body>
+    </html>
     `);
 });
 
-app.get('/download', (req, res) => {
-    const videoUrl = req.query.url;
-    if (!videoUrl) {
-        return res.send('Please provide a video URL!');
+
+app.get("/download", async(req,res)=>{
+
+    const url=req.query.url;
+
+    if(!url){
+        return res.send("Link দিন");
     }
 
-    const timestamp = Date.now();
-    const fileName = `video_${timestamp}.mp4`;
-    const outputPath = path.join(__dirname, fileName);
 
-    const command = `yt-dlp -f "b[ext=mp4]/b" -o "${outputPath}" "${videoUrl}"`;
+    try{
 
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error: ${error.message}`);
-            return res.status(500).send('ডাউনলোড করতে সমস্যা হয়েছে! লিংকটি পুনরায় চেক করুন।');
+        if(!ytdl.validateURL(url)){
+            return res.send("Invalid YouTube URL");
         }
 
-        // ব্রাউজারে সরাসরি ফাইল পাঠিয়ে ডাউনলোড শুরু করানো
-        res.download(outputPath, 'YouTube_Video.mp4', (err) => {
-            if (fs.existsSync(outputPath)) {
-                fs.unlinkSync(outputPath);
-            }
-        });
-    });
+
+        res.setHeader(
+            "Content-Disposition",
+            'attachment; filename="video.mp4"'
+        );
+
+
+        ytdl(url,{
+            quality:"highestvideo"
+        }).pipe(res);
+
+
+    }catch(error){
+
+        console.log(error);
+
+        res.status(500).send(
+        "ভিডিও আনতে সমস্যা হয়েছে"
+        );
+
+    }
+
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+
+app.listen(PORT,()=>{
+console.log(
+`Server running on ${PORT}`
+);
 });
